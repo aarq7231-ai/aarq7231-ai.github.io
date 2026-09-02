@@ -1,41 +1,846 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SmartSummary AI</title>
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9706163199050364" crossorigin="anonymous"></script>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SmartSummary AI — Summarize any PDF instantly</title>
+<meta name="description" content="Drop a PDF and get a clear, plain-language summary in seconds. Free, fast, bilingual (English/Arabic), and private.">
+<meta name="theme-color" content="#4F5FF0">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%234F5FF0'/%3E%3Cpath d='M18 20h28M18 32h28M18 44h18' stroke='white' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+
+<!-- Open Graph -->
+<meta property="og:title" content="SmartSummary AI">
+<meta property="og:description" content="Turn any PDF into a clear summary in seconds.">
+<meta property="og:type" content="website">
+
+<!-- Fonts: Tajawal covers Arabic + Latin cleanly, single family for both languages -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+
+<!-- PDF.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<!-- Google AdSense (placeholder — replace ca-pub-XXXXXXXXXXXXXXXX with your publisher ID) -->
+<!--
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+-->
+
 <style>
-body{font-family:Arial;background:#f4f4f4;margin:0}
-.top{background:#ffd54f;padding:12px;text-align:center;font-weight:bold}
-.wrap{max-width:760px;margin:20px auto;background:#fff;padding:20px;border-radius:10px}
-select,input,button{width:100%;padding:12px;margin:10px 0}
-#result{background:#eee;padding:15px;min-height:120px}
-</style></head><body>
-<div class="top">📢 Ad Banner Here</div>
-<div class="wrap">
-<h2>🤖 SmartSummary AI</h2>
-<select id="lang">
-<option value="en">English</option>
-<option value="ar">العربية</option>
-</select>
-<input type="file" id="pdf" accept=".pdf">
-<button onclick="summarize()">Summarize / تلخيص</button>
-<div id="result">Result / النتيجة</div>
-</div>
+  :root{
+    --bg: #F7F8FC;
+    --bg-elevated: #FFFFFF;
+    --bg-sunken: #EEF0FA;
+    --text: #1A1D2E;
+    --text-muted: #5B6072;
+    --border: #E3E6F0;
+    --primary: #4F5FF0;
+    --primary-hover: #3F4DD6;
+    --primary-soft: #EAECFF;
+    --accent: #16C098;
+    --danger: #E5484D;
+    --shadow: rgba(23,26,54,0.08);
+    --shadow-strong: rgba(23,26,54,0.16);
+    --radius-lg: 22px;
+    --radius-md: 14px;
+    --radius-sm: 10px;
+  }
+
+  [data-theme="dark"]{
+    --bg: #0E1120;
+    --bg-elevated: #171A2E;
+    --bg-sunken: #12142380;
+    --text: #E9EAF6;
+    --text-muted: #9CA1C2;
+    --border: #2A2E4A;
+    --primary: #7C87FF;
+    --primary-hover: #929CFF;
+    --primary-soft: #23264A;
+    --accent: #22E6B0;
+    --danger: #FF6B6F;
+    --shadow: rgba(0,0,0,0.35);
+    --shadow-strong: rgba(0,0,0,0.5);
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    margin:0; padding:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Tajawal', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    transition: background .25s ease, color .25s ease;
+  }
+
+  body{ min-height:100vh; display:flex; flex-direction:column; }
+
+  a{ color: inherit; }
+
+  [dir="rtl"] .flip{ transform: scaleX(-1); }
+
+  /* ---------- Layout shell ---------- */
+  .wrap{
+    width:100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  header.top{
+    padding: 18px 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky; top:0; z-index: 20;
+  }
+  header.top .wrap{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+  }
+
+  .brand{ display:flex; align-items:center; gap:10px; font-weight:800; font-size:1.15rem; letter-spacing:-0.01em; }
+  .brand .mark{
+    width:34px; height:34px; border-radius:10px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:1rem; font-weight:900; flex-shrink:0;
+  }
+
+  .top-actions{ display:flex; align-items:center; gap:8px; }
+
+  .icon-btn{
+    width:40px; height:40px; border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition: transform .15s ease, border-color .15s ease, background .15s ease;
+  }
+  .icon-btn:hover{ border-color: var(--primary); transform: translateY(-1px); }
+  .icon-btn svg{ width:18px; height:18px; }
+
+  .lang-btn{
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text);
+    padding: 0 16px; height:40px;
+    font-family: inherit; font-weight:700; font-size:.92rem;
+    cursor:pointer;
+    transition: transform .15s ease, border-color .15s ease;
+  }
+  .lang-btn:hover{ border-color: var(--primary); transform: translateY(-1px); }
+
+  /* ---------- Hero ---------- */
+  main{ flex:1; }
+
+  .hero{ padding: 56px 0 8px; text-align:center; }
+  .hero h1{
+    font-size: clamp(1.9rem, 5vw, 2.9rem);
+    line-height:1.15;
+    margin: 0 0 14px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+  }
+  .hero p.sub{
+    color: var(--text-muted);
+    font-size: 1.08rem;
+    max-width: 46ch;
+    margin: 0 auto;
+    line-height:1.6;
+  }
+
+  /* ---------- Dropzone (the hero interaction) ---------- */
+  .dz-section{ padding: 34px 0 8px; }
+
+  .dropzone{
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-elevated);
+    padding: 46px 24px;
+    text-align:center;
+    cursor:pointer;
+    position:relative;
+    transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+    box-shadow: 0 1px 2px var(--shadow);
+  }
+  .dropzone:hover{ border-color: var(--primary); }
+  .dropzone.dragover{
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    box-shadow: 0 0 0 6px var(--primary-soft), 0 8px 30px var(--shadow-strong);
+  }
+  .dropzone input[type=file]{ display:none; }
+
+  .dz-icon{
+    width:60px; height:60px; margin: 0 auto 16px;
+    border-radius: 16px;
+    background: var(--primary-soft);
+    color: var(--primary);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .dz-icon svg{ width:28px; height:28px; }
+
+  .dz-title{ font-weight:800; font-size:1.1rem; margin-bottom:6px; }
+  .dz-sub{ color: var(--text-muted); font-size:.92rem; }
+  .dz-hint{ color: var(--text-muted); font-size:.8rem; margin-top:10px; }
+
+  .file-chip{
+    display:none;
+    align-items:center; gap:10px;
+    margin-top:18px; padding:10px 14px;
+    background: var(--bg-sunken);
+    border-radius: 999px;
+    font-size: .88rem;
+    max-width: 100%;
+  }
+  .file-chip.show{ display:inline-flex; }
+  .file-chip .name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 260px; }
+  .file-chip button{
+    border:none; background:none; cursor:pointer; color: var(--text-muted);
+    display:flex; padding:2px; border-radius:50%;
+  }
+  .file-chip button:hover{ color: var(--danger); }
+
+  /* ---------- Progress ---------- */
+  .progress-wrap{ display:none; margin-top: 22px; }
+  .progress-wrap.show{ display:block; }
+  .progress-label{
+    display:flex; justify-content:space-between; font-size:.85rem;
+    color: var(--text-muted); margin-bottom:8px;
+  }
+  .progress-track{
+    height:8px; border-radius:999px; background: var(--bg-sunken); overflow:hidden;
+  }
+  .progress-fill{
+    height:100%; width:0%; border-radius:999px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    transition: width .4s ease;
+  }
+
+  .cta-row{ margin-top:22px; display:flex; justify-content:center; }
+
+  .btn{
+    font-family: inherit;
+    font-weight: 700;
+    font-size: .96rem;
+    border-radius: var(--radius-sm);
+    padding: 13px 26px;
+    border: none;
+    cursor: pointer;
+    display:inline-flex; align-items:center; gap:8px;
+    transition: transform .15s ease, background .15s ease, box-shadow .15s ease, opacity .15s ease;
+  }
+  .btn:active{ transform: translateY(1px); }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .btn svg{ width:17px; height:17px; }
+
+  .btn-primary{
+    background: var(--primary); color:#fff;
+    box-shadow: 0 6px 20px -6px var(--primary);
+  }
+  .btn-primary:hover:not(:disabled){ background: var(--primary-hover); }
+
+  .btn-ghost{
+    background: var(--bg-elevated); color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover:not(:disabled){ border-color: var(--primary); }
+
+  /* ---------- Error ---------- */
+  .error-box{
+    display:none;
+    margin-top:18px; padding:14px 16px;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    color: var(--danger);
+    font-size: .9rem;
+    text-align: start;
+  }
+  .error-box.show{ display:block; }
+
+  /* ---------- Results ---------- */
+  .results{ display:none; padding: 30px 0 10px; }
+  .results.show{ display:block; }
+
+  .stat-row{
+    display:flex; gap:12px; margin-bottom:18px; flex-wrap:wrap;
+  }
+  .stat{
+    flex:1; min-width:120px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    text-align: start;
+  }
+  .stat .num{ font-size:1.5rem; font-weight:900; line-height:1.2; }
+  .stat .lbl{ font-size:.8rem; color: var(--text-muted); margin-top:2px; }
+
+  .summary-card{
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 26px;
+    box-shadow: 0 1px 2px var(--shadow);
+  }
+  .summary-card h2{
+    margin: 0 0 14px;
+    font-size: 1.15rem;
+    font-weight: 800;
+  }
+  .summary-text{
+    font-size: 1rem;
+    line-height: 1.8;
+    color: var(--text);
+    white-space: pre-wrap;
+    text-align: start;
+  }
+
+  .action-row{
+    display:flex; gap:10px; margin-top:22px; flex-wrap:wrap;
+  }
+  .action-row .btn{ flex:1; justify-content:center; min-width: 130px; }
+
+  /* ---------- Ad placeholder ---------- */
+  .ad-slot{
+    margin: 40px auto 0;
+    max-width: 760px;
+    padding: 0 20px;
+  }
+  .ad-inner{
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-sunken);
+    color: var(--text-muted);
+    font-size: .78rem;
+    text-align:center;
+    padding: 14px;
+    min-height: 90px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  /*
+    Replace this placeholder with your real AdSense unit, e.g.:
+    <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+         data-ad-slot="XXXXXXXXXX" data-ad-format="auto" data-full-width-responsive="true"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+  */
+
+  footer{
+    margin-top: 50px;
+    padding: 26px 0 40px;
+    text-align:center;
+    color: var(--text-muted);
+    font-size: .82rem;
+  }
+
+  .visually-hidden{
+    position:absolute; width:1px; height:1px; overflow:hidden;
+    clip: rect(0 0 0 0); white-space:nowrap;
+  }
+
+  @media (max-width: 480px){
+    .hero{ padding-top: 40px; }
+    .dropzone{ padding: 34px 16px; }
+    .summary-card{ padding: 20px; }
+    .action-row .btn{ min-width: 100%; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition-duration: 0.001ms !important; animation-duration: 0.001ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <span class="mark">S</span>
+      <span>SmartSummary AI</span>
+    </div>
+    <div class="top-actions">
+      <button class="lang-btn" id="langToggle" type="button">العربية</button>
+      <button class="icon-btn" id="themeToggle" type="button" aria-label="Toggle dark mode">
+        <svg id="themeIconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="themeIconSun" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero wrap">
+    <h1 data-i18n="headline">Turn any PDF into a clear summary in seconds</h1>
+    <p class="sub" data-i18n="subhead">Drop a file, and get the key points in plain language — free, fast, and private.</p>
+  </section>
+
+  <section class="dz-section wrap">
+    <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-labelledby="dzTitle">
+      <input type="file" id="fileInput" accept="application/pdf">
+      <div class="dz-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <div class="dz-title" id="dzTitle" data-i18n="dzTitle">Drag and drop your PDF here</div>
+      <div class="dz-sub" data-i18n="dzSub">or click to browse</div>
+      <div class="dz-hint" data-i18n="dzHint">PDF files only, up to 20MB</div>
+
+      <div class="file-chip" id="fileChip">
+        <span class="name" id="fileName"></span>
+        <button type="button" id="clearFile" aria-label="Remove file">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-label">
+        <span id="progressText" data-i18n="pReading">Reading your file…</span>
+        <span id="progressPct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <div class="cta-row">
+      <button class="btn btn-primary" id="summarizeBtn" type="button" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z"/></svg>
+        <span data-i18n="summarizeBtn">Summarize</span>
+      </button>
+    </div>
+  </section>
+
+  <section class="results wrap" id="results">
+    <div class="stat-row">
+      <div class="stat">
+        <div class="num" id="pageCount">0</div>
+        <div class="lbl" data-i18n="pages">Pages</div>
+      </div>
+      <div class="stat">
+        <div class="num" id="wordCount">0</div>
+        <div class="lbl" data-i18n="words">Words</div>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <h2 data-i18n="summaryHeading">Summary</h2>
+      <div class="summary-text" id="summaryText"></div>
+
+      <div class="action-row">
+        <button class="btn btn-ghost" id="copyBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span data-i18n="copyBtn">Copy</span>
+        </button>
+        <button class="btn btn-ghost" id="downloadBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span data-i18n="downloadBtn">Download .txt</span>
+        </button>
+        <button class="btn btn-ghost" id="shareBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>
+          <span data-i18n="shareBtn">Share</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="cta-row" style="margin-top:20px;">
+      <button class="btn btn-ghost" id="resetBtn" type="button">
+        <span data-i18n="resetBtn">Choose another file</span>
+      </button>
+    </div>
+  </section>
+
+  <div class="ad-slot">
+    <div class="ad-inner" data-i18n="adLabel">Advertisement</div>
+    <!--
+      Replace the div above with your live AdSense unit:
+      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+           data-ad-slot="XXXXXXXXXX" data-ad-format="auto" data-full-width-responsive="true"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    -->
+  </div>
+</main>
+
+<footer class="wrap">
+  <span data-i18n="footer">Built with PDF.js. Your files are processed securely.</span>
+</footer>
+
+<span class="visually-hidden" id="liveRegion" role="status" aria-live="polite"></span>
+
 <script>
-pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-async function summarize(){
-const f=document.getElementById('pdf').files[0];
-if(!f){alert('Choose a PDF / اختر ملف PDF');return;}
-result.innerHTML='Reading...';
-const data=await f.arrayBuffer();
-const pdf=await pdfjsLib.getDocument({data}).promise;
-let text='';
-for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i);const c=await p.getTextContent();text+=c.items.map(x=>x.str).join(' ')+'\n';}
-const lang=document.getElementById('lang').value;
-const prompt=(lang==='ar'?'لخص بالعربية:\n':'Summarize in English:\n')+text;
-const r=await fetch('https://smartsummary-backend.vercel.app/summarize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:prompt})});
-const j=await r.json();
-result.textContent=j.summary||'Error';
-}
-</script></body></html>
+(function(){
+  "use strict";
+
+  /* ============ i18n ============ */
+  var STRINGS = {
+    en: {
+      headline: "Turn any PDF into a clear summary in seconds",
+      subhead: "Drop a file, and get the key points in plain language — free, fast, and private.",
+      dzTitle: "Drag and drop your PDF here",
+      dzSub: "or click to browse",
+      dzHint: "PDF files only, up to 20MB",
+      summarizeBtn: "Summarize",
+      pages: "Pages",
+      words: "Words",
+      summaryHeading: "Summary",
+      copyBtn: "Copy",
+      copiedBtn: "Copied",
+      downloadBtn: "Download .txt",
+      shareBtn: "Share",
+      resetBtn: "Choose another file",
+      adLabel: "Advertisement",
+      footer: "Built with PDF.js. Your files are processed securely.",
+      pReading: "Reading your file…",
+      pExtracting: "Extracting text…",
+      pSummarizing: "Summarizing…",
+      pDone: "Done",
+      errNotPdf: "Please upload a PDF file.",
+      errTooBig: "That file is larger than 20MB. Try a smaller PDF.",
+      errNetwork: "Something went wrong. Check your connection and try again.",
+      errEmpty: "This PDF doesn't seem to contain readable text.",
+      shareTitle: "Summary from SmartSummary AI",
+      langSwitchTo: "العربية",
+      themeAria: "Toggle dark mode"
+    },
+    ar: {
+      headline: "حوّل أي ملف PDF إلى ملخص واضح خلال ثوانٍ",
+      subhead: "أفلت الملف واحصل على أهم النقاط بلغة بسيطة — مجانًا وبسرعة وبخصوصية تامة.",
+      dzTitle: "اسحب وأفلت ملف PDF هنا",
+      dzSub: "أو انقر للاختيار",
+      dzHint: "ملفات PDF فقط، حتى 20 ميجابايت",
+      summarizeBtn: "تلخيص",
+      pages: "الصفحات",
+      words: "الكلمات",
+      summaryHeading: "الملخص",
+      copyBtn: "نسخ",
+      copiedBtn: "تم النسخ",
+      downloadBtn: "تنزيل .txt",
+      shareBtn: "مشاركة",
+      resetBtn: "اختيار ملف آخر",
+      adLabel: "إعلان",
+      footer: "مبني باستخدام PDF.js. تتم معالجة ملفاتك بأمان.",
+      pReading: "جارٍ قراءة الملف…",
+      pExtracting: "جارٍ استخراج النص…",
+      pSummarizing: "جارٍ التلخيص…",
+      pDone: "تم",
+      errNotPdf: "الرجاء رفع ملف PDF.",
+      errTooBig: "حجم الملف أكبر من 20 ميجابايت. جرّب ملفًا أصغر.",
+      errNetwork: "حدث خطأ ما. تحقق من اتصالك وحاول مرة أخرى.",
+      errEmpty: "يبدو أن هذا الملف لا يحتوي على نص قابل للقراءة.",
+      shareTitle: "ملخص من SmartSummary AI",
+      langSwitchTo: "English",
+      themeAria: "التبديل إلى الوضع الداكن"
+    }
+  };
+
+  var state = {
+    lang: localStorage.getItem('ss_lang') || 'en',
+    theme: localStorage.getItem('ss_theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
+    file: null,
+    summary: '',
+    pageCount: 0,
+    wordCount: 0
+  };
+
+  function t(key){ return STRINGS[state.lang][key] || STRINGS.en[key] || key; }
+
+  function applyLang(){
+    document.documentElement.lang = state.lang;
+    document.documentElement.dir = state.lang === 'ar' ? 'rtl' : 'ltr';
+    document.querySelectorAll('[data-i18n]').forEach(function(el){
+      var key = el.getAttribute('data-i18n');
+      el.textContent = t(key);
+    });
+    document.getElementById('langToggle').textContent = t('langSwitchTo');
+    document.getElementById('themeToggle').setAttribute('aria-label', t('themeAria'));
+    // re-render dynamic strings
+    document.getElementById('copyBtn').querySelector('span').textContent = t('copyBtn');
+    localStorage.setItem('ss_lang', state.lang);
+  }
+
+  function applyTheme(){
+    document.documentElement.setAttribute('data-theme', state.theme);
+    document.getElementById('themeIconMoon').style.display = state.theme === 'dark' ? 'none' : 'block';
+    document.getElementById('themeIconSun').style.display = state.theme === 'dark' ? 'block' : 'none';
+    localStorage.setItem('ss_theme', state.theme);
+  }
+
+  document.getElementById('langToggle').addEventListener('click', function(){
+    state.lang = state.lang === 'en' ? 'ar' : 'en';
+    applyLang();
+  });
+
+  document.getElementById('themeToggle').addEventListener('click', function(){
+    state.theme = state.theme === 'dark' ? 'light' : 'dark';
+    applyTheme();
+  });
+
+  applyLang();
+  applyTheme();
+
+  /* ============ Elements ============ */
+  var dropzone = document.getElementById('dropzone');
+  var fileInput = document.getElementById('fileInput');
+  var fileChip = document.getElementById('fileChip');
+  var fileNameEl = document.getElementById('fileName');
+  var clearFileBtn = document.getElementById('clearFile');
+  var summarizeBtn = document.getElementById('summarizeBtn');
+  var progressWrap = document.getElementById('progressWrap');
+  var progressFill = document.getElementById('progressFill');
+  var progressText = document.getElementById('progressText');
+  var progressPct = document.getElementById('progressPct');
+  var errorBox = document.getElementById('errorBox');
+  var resultsSection = document.getElementById('results');
+  var pageCountEl = document.getElementById('pageCount');
+  var wordCountEl = document.getElementById('wordCount');
+  var summaryTextEl = document.getElementById('summaryText');
+  var copyBtn = document.getElementById('copyBtn');
+  var downloadBtn = document.getElementById('downloadBtn');
+  var shareBtn = document.getElementById('shareBtn');
+  var resetBtn = document.getElementById('resetBtn');
+  var liveRegion = document.getElementById('liveRegion');
+
+  var MAX_SIZE = 20 * 1024 * 1024; // 20MB
+  var BACKEND_URL = 'https://smartsummary-backend.vercel.app/summarize';
+
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
+  /* ============ Helpers ============ */
+  function showError(msg){
+    errorBox.textContent = msg;
+    errorBox.classList.add('show');
+    liveRegion.textContent = msg;
+  }
+  function hideError(){
+    errorBox.classList.remove('show');
+    errorBox.textContent = '';
+  }
+  function setProgress(pct, labelKey){
+    progressWrap.classList.add('show');
+    progressFill.style.width = pct + '%';
+    progressPct.textContent = pct + '%';
+    if (labelKey) progressText.textContent = t(labelKey);
+  }
+  function resetProgress(){
+    progressWrap.classList.remove('show');
+    progressFill.style.width = '0%';
+    progressPct.textContent = '0%';
+  }
+  function countWords(str){
+    var m = str.trim().match(/\S+/g);
+    return m ? m.length : 0;
+  }
+
+  /* ============ File selection ============ */
+  function selectFile(file){
+    hideError();
+    if (!file) return;
+    if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
+      showError(t('errNotPdf'));
+      return;
+    }
+    if (file.size > MAX_SIZE) {
+      showError(t('errTooBig'));
+      return;
+    }
+    state.file = file;
+    fileNameEl.textContent = file.name;
+    fileChip.classList.add('show');
+    summarizeBtn.disabled = false;
+  }
+
+  dropzone.addEventListener('click', function(e){
+    if (e.target === clearFileBtn || clearFileBtn.contains(e.target)) return;
+    fileInput.click();
+  });
+  dropzone.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+  });
+  fileInput.addEventListener('change', function(){
+    if (fileInput.files && fileInput.files[0]) selectFile(fileInput.files[0]);
+  });
+
+  ['dragenter','dragover'].forEach(function(evt){
+    dropzone.addEventListener(evt, function(e){
+      e.preventDefault(); e.stopPropagation();
+      dropzone.classList.add('dragover');
+    });
+  });
+  ['dragleave','drop'].forEach(function(evt){
+    dropzone.addEventListener(evt, function(e){
+      e.preventDefault(); e.stopPropagation();
+      dropzone.classList.remove('dragover');
+    });
+  });
+  dropzone.addEventListener('drop', function(e){
+    var dt = e.dataTransfer;
+    if (dt && dt.files && dt.files[0]) selectFile(dt.files[0]);
+  });
+
+  clearFileBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    state.file = null;
+    fileInput.value = '';
+    fileChip.classList.remove('show');
+    summarizeBtn.disabled = true;
+  });
+
+  /* ============ PDF extraction (for page/word counts) ============ */
+  function extractPdfInfo(file){
+    return file.arrayBuffer().then(function(buf){
+      return pdfjsLib.getDocument({ data: buf }).promise;
+    }).then(function(pdf){
+      var numPages = pdf.numPages;
+      var pageTextPromises = [];
+      for (var i = 1; i <= numPages; i++){
+        pageTextPromises.push(
+          pdf.getPage(i).then(function(page){
+            return page.getTextContent();
+          }).then(function(tc){
+            return tc.items.map(function(it){ return it.str; }).join(' ');
+          })
+        );
+      }
+      return Promise.all(pageTextPromises).then(function(pages){
+        return { numPages: numPages, text: pages.join('\n\n') };
+      });
+    });
+  }
+
+  /* ============ Backend call ============ */
+  function requestSummary(file, extractedText){
+    var formData = new FormData();
+    formData.append('file', file, file.name);
+    formData.append('lang', state.lang);
+    // Some backends prefer raw text instead of / in addition to the file.
+    if (extractedText) formData.append('text', extractedText);
+
+    return fetch(BACKEND_URL, {
+      method: 'POST',
+      body: formData
+    }).then(function(res){
+      if (!res.ok) throw new Error('Bad response: ' + res.status);
+      return res.json().catch(function(){ return res.text(); });
+    }).then(function(data){
+      if (typeof data === 'string') return data;
+      return data.summary || data.result || data.text || data.output || JSON.stringify(data);
+    });
+  }
+
+  /* ============ Main flow ============ */
+  summarizeBtn.addEventListener('click', function(){
+    if (!state.file) return;
+    hideError();
+    resultsSection.classList.remove('show');
+    summarizeBtn.disabled = true;
+
+    setProgress(10, 'pReading');
+
+    extractPdfInfo(state.file).then(function(info){
+      state.pageCount = info.numPages;
+      state.wordCount = countWords(info.text);
+
+      setProgress(45, 'pExtracting');
+
+      if (!info.text || !info.text.trim()){
+        // Not fatal — some PDFs are scanned images; still try backend with the file.
+      }
+
+      setProgress(65, 'pSummarizing');
+      return requestSummary(state.file, info.text);
+    }).then(function(summary){
+      state.summary = (summary || '').toString().trim();
+      if (!state.summary){
+        throw new Error('empty-summary');
+      }
+      setProgress(100, 'pDone');
+      renderResults();
+      setTimeout(resetProgress, 700);
+    }).catch(function(err){
+      console.error(err);
+      resetProgress();
+      if (err && err.message === 'empty-summary'){
+        showError(t('errEmpty'));
+      } else {
+        showError(t('errNetwork'));
+      }
+    }).finally(function(){
+      summarizeBtn.disabled = false;
+    });
+  });
+
+  function renderResults(){
+    pageCountEl.textContent = state.pageCount;
+    wordCountEl.textContent = state.wordCount.toLocaleString(state.lang === 'ar' ? 'ar-EG' : 'en-US');
+    summaryTextEl.textContent = state.summary;
+    resultsSection.classList.add('show');
+    resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /* ============ Actions: copy / download / share ============ */
+  copyBtn.addEventListener('click', function(){
+    if (!state.summary) return;
+    navigator.clipboard.writeText(state.summary).then(function(){
+      var span = copyBtn.querySelector('span');
+      var original = span.textContent;
+      span.textContent = t('copiedBtn');
+      setTimeout(function(){ span.textContent = t('copyBtn'); }, 1600);
+    }).catch(function(){
+      // Fallback for older browsers
+      var ta = document.createElement('textarea');
+      ta.value = state.summary;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch(e){}
+      document.body.removeChild(ta);
+    });
+  });
+
+  downloadBtn.addEventListener('click', function(){
+    if (!state.summary) return;
+    var blob = new Blob([state.summary], { type: 'text/plain;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var base = state.file ? state.file.name.replace(/\.pdf$/i, '') : 'summary';
+    a.href = url;
+    a.download = base + '-summary.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  shareBtn.addEventListener('click', function(){
+    if (!state.summary) return;
+    if (navigator.share){
+      navigator.share({
+        title: t('shareTitle'),
+        text: state.summary
+      }).catch(function(){ /* user cancelled — no-op */ });
+    } else {
+      navigator.clipboard.writeText(state.summary).then(function(){
+        var span = copyBtn.querySelector('span');
+        span.textContent = t('copiedBtn');
+        setTimeout(function(){ span.textContent = t('copyBtn'); }, 1600);
+      });
+    }
+  });
+
+  resetBtn.addEventListener('click', function(){
+    state.file = null;
+    state.summary = '';
+    fileInput.value = '';
+    fileChip.classList.remove('show');
+    summarizeBtn.disabled = true;
+    resultsSection.classList.remove('show');
+    hideError();
+    resetProgress();
+    dropzone.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+})();
+</script>
+</body>
+</html>
