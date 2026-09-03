@@ -870,7 +870,7 @@
 
   downloadBtn.addEventListener('click', function(){
     if (!state.summary) return;
-    var blob = new Blob([state.summary], { type: 'text/plain;charset=utf-8' });
+    var blob = new Blob(['\uFEFF' + state.summary], { type: 'text/plain;charset=utf-8' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     var base = state.file ? state.file.name.replace(/\.pdf$/i, '') : 'summary';
