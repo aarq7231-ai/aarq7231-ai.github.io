@@ -21,6 +21,10 @@
 <!-- PDF.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
+<!-- Markdown rendering for the summary output -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js"></script>
+
 <!-- Google AdSense (placeholder — replace ca-pub-XXXXXXXXXXXXXXXX with your publisher ID) -->
 <!--
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
@@ -293,7 +297,70 @@
     font-size: 1rem;
     line-height: 1.8;
     color: var(--text);
-    white-space: pre-wrap;
+    text-align: start;
+  }
+  .summary-text > *:first-child{ margin-top: 0; }
+  .summary-text > *:last-child{ margin-bottom: 0; }
+  .summary-text h1,
+  .summary-text h2,
+  .summary-text h3,
+  .summary-text h4{
+    font-weight: 800;
+    line-height: 1.3;
+    margin: 1.1em 0 .5em;
+  }
+  .summary-text h1{ font-size: 1.35rem; }
+  .summary-text h2{ font-size: 1.2rem; }
+  .summary-text h3{ font-size: 1.08rem; }
+  .summary-text h4{ font-size: 1rem; }
+  .summary-text p{ margin: 0 0 1em; }
+  .summary-text strong{ font-weight: 800; }
+  .summary-text em{ font-style: italic; }
+  .summary-text ul,
+  .summary-text ol{
+    margin: 0 0 1em;
+    padding-inline-start: 1.4em;
+  }
+  .summary-text li{ margin: 0.35em 0; }
+  .summary-text li > ul,
+  .summary-text li > ol{ margin: 0.35em 0 0; }
+  .summary-text a{ color: var(--primary); text-decoration: underline; }
+  .summary-text code{
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--bg-sunken);
+    padding: 0.15em 0.4em;
+    border-radius: 6px;
+    font-size: 0.9em;
+  }
+  .summary-text pre{
+    background: var(--bg-sunken);
+    padding: 14px 16px;
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    margin: 0 0 1em;
+  }
+  .summary-text pre code{ background: none; padding: 0; }
+  .summary-text blockquote{
+    margin: 0 0 1em;
+    padding-inline-start: 14px;
+    border-inline-start: 3px solid var(--border);
+    color: var(--text-muted);
+  }
+  .summary-text hr{
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.2em 0;
+  }
+  .summary-text table{
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0 0 1em;
+    font-size: 0.94em;
+  }
+  .summary-text th,
+  .summary-text td{
+    border: 1px solid var(--border);
+    padding: 8px 10px;
     text-align: start;
   }
 
@@ -710,22 +777,20 @@
   }
 
   /* ============ Backend call ============ */
-  function requestSummary(file, extractedText){
-    var formData = new FormData();
-    formData.append('file', file, file.name);
-    formData.append('lang', state.lang);
-    // Some backends prefer raw text instead of / in addition to the file.
-    if (extractedText) formData.append('text', extractedText);
-
+  function requestSummary(extractedText){
     return fetch(BACKEND_URL, {
       method: 'POST',
-      body: formData
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        text: extractedText
+      })
     }).then(function(res){
       if (!res.ok) throw new Error('Bad response: ' + res.status);
-      return res.json().catch(function(){ return res.text(); });
+      return res.json();
     }).then(function(data){
-      if (typeof data === 'string') return data;
-      return data.summary || data.result || data.text || data.output || JSON.stringify(data);
+      return (data && data.summary) ? data.summary : '';
     });
   }
 
@@ -745,11 +810,11 @@
       setProgress(45, 'pExtracting');
 
       if (!info.text || !info.text.trim()){
-        // Not fatal — some PDFs are scanned images; still try backend with the file.
+        throw new Error('empty-summary');
       }
 
       setProgress(65, 'pSummarizing');
-      return requestSummary(state.file, info.text);
+      return requestSummary(info.text);
     }).then(function(summary){
       state.summary = (summary || '').toString().trim();
       if (!state.summary){
@@ -771,10 +836,15 @@
     });
   });
 
+  function renderMarkdown(mdText){
+    var rawHtml = (window.marked ? marked.parse(mdText, { breaks: true }) : mdText);
+    return window.DOMPurify ? DOMPurify.sanitize(rawHtml) : rawHtml;
+  }
+
   function renderResults(){
     pageCountEl.textContent = state.pageCount;
     wordCountEl.textContent = state.wordCount.toLocaleString(state.lang === 'ar' ? 'ar-EG' : 'en-US');
-    summaryTextEl.textContent = state.summary;
+    summaryTextEl.innerHTML = renderMarkdown(state.summary);
     resultsSection.classList.add('show');
     resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
