@@ -25,6 +25,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js"></script>
 
+<!-- OCR for image uploads -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
+
+<!-- PDF export of the summary -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <!-- Google AdSense (placeholder — replace ca-pub-XXXXXXXXXXXXXXXX with your publisher ID) -->
 <!--
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
@@ -205,6 +212,36 @@
     display:flex; padding:2px; border-radius:50%;
   }
   .file-chip button:hover{ color: var(--danger); }
+
+  /* ---------- Alternate upload: image + OCR ---------- */
+  .alt-upload{
+    display:flex; align-items:center; justify-content:center;
+    gap: 12px; margin-top: 16px; flex-wrap: wrap;
+  }
+  .alt-upload .divider{ color: var(--text-muted); font-size:.85rem; }
+  .btn-sm{
+    padding: 9px 18px;
+    font-size: .85rem;
+    border-radius: 999px;
+  }
+  .btn-sm svg{ width:15px; height:15px; }
+  .image-chip{
+    display:none;
+    align-items:center; gap:10px;
+    margin-top:14px; padding:10px 14px;
+    background: var(--bg-sunken);
+    border-radius: 999px;
+    font-size: .88rem;
+    max-width: 100%;
+    justify-content:center;
+  }
+  .image-chip.show{ display:inline-flex; }
+  .image-chip .name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 260px; }
+  .image-chip button{
+    border:none; background:none; cursor:pointer; color: var(--text-muted);
+    display:flex; padding:2px; border-radius:50%;
+  }
+  .image-chip button:hover{ color: var(--danger); }
 
   /* ---------- Progress ---------- */
   .progress-wrap{ display:none; margin-top: 22px; }
@@ -460,6 +497,22 @@
       </div>
     </div>
 
+    <div class="alt-upload">
+      <span class="divider" data-i18n="altUploadOr">or</span>
+      <button type="button" class="btn btn-ghost btn-sm" id="imageUploadBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        <span data-i18n="uploadImageBtn">Upload Image</span>
+      </button>
+      <input type="file" id="imageInput" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" style="display:none">
+    </div>
+
+    <div class="image-chip" id="imageFileChip">
+      <span class="name" id="imageFileName"></span>
+      <button type="button" id="clearImageFile" aria-label="Remove image">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
     <div class="progress-wrap" id="progressWrap">
       <div class="progress-label">
         <span id="progressText" data-i18n="pReading">Reading your file…</span>
@@ -502,6 +555,10 @@
         <button class="btn btn-ghost" id="downloadBtn" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           <span data-i18n="downloadBtn">Download .txt</span>
+        </button>
+        <button class="btn btn-ghost" id="downloadPdfBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="18" x2="13" y2="18"/></svg>
+          <span data-i18n="downloadPdfBtn">Download PDF</span>
         </button>
         <button class="btn btn-ghost" id="shareBtn" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>
@@ -553,21 +610,28 @@
       copyBtn: "Copy",
       copiedBtn: "Copied",
       downloadBtn: "Download .txt",
+      downloadPdfBtn: "Download PDF",
+      generatingPdf: "Preparing PDF…",
       shareBtn: "Share",
       resetBtn: "Choose another file",
       adLabel: "Advertisement",
       footer: "Built with PDF.js. Your files are processed securely.",
       pReading: "Reading your file…",
       pExtracting: "Extracting text…",
+      pOcr: "Reading text from image…",
       pSummarizing: "Summarizing…",
       pDone: "Done",
       errNotPdf: "Please upload a PDF file.",
-      errTooBig: "That file is larger than 20MB. Try a smaller PDF.",
+      errNotImage: "Please upload a JPG, PNG, or WEBP image.",
+      errTooBig: "That file is larger than 20MB. Try a smaller file.",
       errNetwork: "Something went wrong. Check your connection and try again.",
-      errEmpty: "This PDF doesn't seem to contain readable text.",
+      errEmpty: "No readable text was found in that file.",
+      errPdfExport: "Couldn't generate the PDF. Please try again.",
       shareTitle: "Summary from SmartSummary AI",
       langSwitchTo: "العربية",
-      themeAria: "Toggle dark mode"
+      themeAria: "Toggle dark mode",
+      altUploadOr: "or",
+      uploadImageBtn: "Upload Image"
     },
     ar: {
       headline: "حوّل أي ملف PDF إلى ملخص واضح خلال ثوانٍ",
@@ -582,21 +646,28 @@
       copyBtn: "نسخ",
       copiedBtn: "تم النسخ",
       downloadBtn: "تنزيل .txt",
+      downloadPdfBtn: "تنزيل PDF",
+      generatingPdf: "جارٍ تجهيز ملف PDF…",
       shareBtn: "مشاركة",
       resetBtn: "اختيار ملف آخر",
       adLabel: "إعلان",
       footer: "مبني باستخدام PDF.js. تتم معالجة ملفاتك بأمان.",
       pReading: "جارٍ قراءة الملف…",
       pExtracting: "جارٍ استخراج النص…",
+      pOcr: "جارٍ استخراج النص من الصورة…",
       pSummarizing: "جارٍ التلخيص…",
       pDone: "تم",
       errNotPdf: "الرجاء رفع ملف PDF.",
+      errNotImage: "الرجاء رفع صورة بصيغة JPG أو PNG أو WEBP.",
       errTooBig: "حجم الملف أكبر من 20 ميجابايت. جرّب ملفًا أصغر.",
       errNetwork: "حدث خطأ ما. تحقق من اتصالك وحاول مرة أخرى.",
-      errEmpty: "يبدو أن هذا الملف لا يحتوي على نص قابل للقراءة.",
+      errEmpty: "لم يتم العثور على نص قابل للقراءة في هذا الملف.",
+      errPdfExport: "تعذّر إنشاء ملف PDF. حاول مرة أخرى.",
       shareTitle: "ملخص من SmartSummary AI",
       langSwitchTo: "English",
-      themeAria: "التبديل إلى الوضع الداكن"
+      themeAria: "التبديل إلى الوضع الداكن",
+      altUploadOr: "أو",
+      uploadImageBtn: "رفع صورة"
     }
   };
 
@@ -604,6 +675,7 @@
     lang: localStorage.getItem('ss_lang') || 'en',
     theme: localStorage.getItem('ss_theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
     file: null,
+    imageFile: null,
     summary: '',
     pageCount: 0,
     wordCount: 0
@@ -663,9 +735,15 @@
   var summaryTextEl = document.getElementById('summaryText');
   var copyBtn = document.getElementById('copyBtn');
   var downloadBtn = document.getElementById('downloadBtn');
+  var downloadPdfBtn = document.getElementById('downloadPdfBtn');
   var shareBtn = document.getElementById('shareBtn');
   var resetBtn = document.getElementById('resetBtn');
   var liveRegion = document.getElementById('liveRegion');
+  var imageInput = document.getElementById('imageInput');
+  var imageUploadBtn = document.getElementById('imageUploadBtn');
+  var imageFileChip = document.getElementById('imageFileChip');
+  var imageFileNameEl = document.getElementById('imageFileName');
+  var clearImageFileBtn = document.getElementById('clearImageFile');
 
   var MAX_SIZE = 20 * 1024 * 1024; // 20MB
   var BACKEND_URL = 'https://smartsummary-backend.vercel.app/summarize';
@@ -700,7 +778,7 @@
     return m ? m.length : 0;
   }
 
-  /* ============ File selection ============ */
+  /* ============ File selection: PDF (unchanged behavior) ============ */
   function selectFile(file){
     hideError();
     if (!file) return;
@@ -712,6 +790,11 @@
       showError(t('errTooBig'));
       return;
     }
+    // A PDF and an image are mutually exclusive as the active source.
+    state.imageFile = null;
+    imageInput.value = '';
+    imageFileChip.classList.remove('show');
+
     state.file = file;
     fileNameEl.textContent = file.name;
     fileChip.classList.add('show');
@@ -753,6 +836,59 @@
     fileChip.classList.remove('show');
     summarizeBtn.disabled = true;
   });
+
+  /* ============ File selection: Image (new, OCR path) ============ */
+  function selectImage(file){
+    hideError();
+    if (!file) return;
+    var okType = ['image/jpeg','image/png','image/webp'].indexOf(file.type) !== -1 ||
+                 /\.(jpe?g|png|webp)$/i.test(file.name);
+    if (!okType) {
+      showError(t('errNotImage'));
+      return;
+    }
+    if (file.size > MAX_SIZE) {
+      showError(t('errTooBig'));
+      return;
+    }
+    // A PDF and an image are mutually exclusive as the active source.
+    state.file = null;
+    fileInput.value = '';
+    fileChip.classList.remove('show');
+
+    state.imageFile = file;
+    imageFileNameEl.textContent = file.name;
+    imageFileChip.classList.add('show');
+    summarizeBtn.disabled = false;
+  }
+
+  imageUploadBtn.addEventListener('click', function(){
+    imageInput.click();
+  });
+  imageInput.addEventListener('change', function(){
+    if (imageInput.files && imageInput.files[0]) selectImage(imageInput.files[0]);
+  });
+  clearImageFileBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    state.imageFile = null;
+    imageInput.value = '';
+    imageFileChip.classList.remove('show');
+    summarizeBtn.disabled = true;
+  });
+
+  /* ============ Image OCR (Tesseract.js) ============ */
+  function extractImageText(file){
+    return Tesseract.recognize(file, 'eng+ara', {
+      logger: function(m){
+        if (m && m.status === 'recognizing text' && typeof m.progress === 'number') {
+          var pct = 10 + Math.round(m.progress * 35); // animate 10% -> 45%
+          setProgress(pct, 'pOcr');
+        }
+      }
+    }).then(function(result){
+      return (result && result.data && result.data.text) ? result.data.text : '';
+    });
+  }
 
   /* ============ PDF extraction (for page/word counts) ============ */
   function extractPdfInfo(file){
@@ -796,18 +932,32 @@
 
   /* ============ Main flow ============ */
   summarizeBtn.addEventListener('click', function(){
-    if (!state.file) return;
+    if (!state.file && !state.imageFile) return;
     hideError();
     resultsSection.classList.remove('show');
     summarizeBtn.disabled = true;
 
-    setProgress(10, 'pReading');
+    var extractPromise;
 
-    extractPdfInfo(state.file).then(function(info){
-      state.pageCount = info.numPages;
+    if (state.file) {
+      // PDF path — identical to before.
+      setProgress(10, 'pReading');
+      extractPromise = extractPdfInfo(state.file).then(function(info){
+        setProgress(45, 'pExtracting');
+        return { text: info.text, pageCount: info.numPages };
+      });
+    } else {
+      // Image path — OCR via Tesseract.js.
+      setProgress(10, 'pOcr');
+      extractPromise = extractImageText(state.imageFile).then(function(text){
+        setProgress(45, 'pOcr');
+        return { text: text, pageCount: 1 };
+      });
+    }
+
+    extractPromise.then(function(info){
+      state.pageCount = info.pageCount;
       state.wordCount = countWords(info.text);
-
-      setProgress(45, 'pExtracting');
 
       if (!info.text || !info.text.trim()){
         throw new Error('empty-summary');
@@ -850,6 +1000,12 @@
   }
 
   /* ============ Actions: copy / download / share ============ */
+  function getBaseFilename(){
+    if (state.file) return state.file.name.replace(/\.pdf$/i, '');
+    if (state.imageFile) return state.imageFile.name.replace(/\.(jpe?g|png|webp)$/i, '');
+    return 'summary';
+  }
+
   copyBtn.addEventListener('click', function(){
     if (!state.summary) return;
     navigator.clipboard.writeText(state.summary).then(function(){
@@ -873,13 +1029,99 @@
     var blob = new Blob(['\uFEFF' + state.summary], { type: 'text/plain;charset=utf-8' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
-    var base = state.file ? state.file.name.replace(/\.pdf$/i, '') : 'summary';
+    var base = getBaseFilename();
     a.href = url;
     a.download = base + '-summary.txt';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  });
+
+  function exportSummaryAsPdf(){
+    return new Promise(function(resolve, reject){
+      var jsPDFCtor = window.jspdf && window.jspdf.jsPDF;
+      if (!window.html2canvas || !jsPDFCtor){
+        reject(new Error('pdf-libs-missing'));
+        return;
+      }
+
+      // Build an offscreen, print-friendly clone of the rendered summary
+      // (fixed light background so it stays clean regardless of Dark Mode).
+      var container = document.createElement('div');
+      container.setAttribute('dir', state.lang === 'ar' ? 'rtl' : 'ltr');
+      container.style.position = 'fixed';
+      container.style.top = '0';
+      container.style.left = '-10000px';
+      container.style.width = '700px';
+      container.style.background = '#FFFFFF';
+      container.style.color = '#1A1D2E';
+      container.style.padding = '40px';
+      container.style.fontFamily = "'Tajawal', system-ui, sans-serif";
+      container.style.fontSize = '15px';
+      container.style.lineHeight = '1.8';
+      container.className = 'summary-text';
+
+      var heading = document.createElement('h2');
+      heading.style.margin = '0 0 18px';
+      heading.style.fontSize = '20px';
+      heading.style.fontWeight = '800';
+      heading.style.color = '#1A1D2E';
+      heading.textContent = t('summaryHeading');
+
+      var body = document.createElement('div');
+      body.innerHTML = summaryTextEl.innerHTML;
+
+      container.appendChild(heading);
+      container.appendChild(body);
+      document.body.appendChild(container);
+
+      var fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+
+      fontsReady.then(function(){
+        return html2canvas(container, { scale: 2, backgroundColor: '#FFFFFF', useCORS: true });
+      }).then(function(canvas){
+        document.body.removeChild(container);
+
+        var imgData = canvas.toDataURL('image/png');
+        var pdf = new jsPDFCtor({ unit: 'pt', format: 'a4' });
+        var pageWidth = pdf.internal.pageSize.getWidth();
+        var pageHeight = pdf.internal.pageSize.getHeight();
+        var margin = 28;
+        var imgWidth = pageWidth - margin * 2;
+        var imgHeight = (canvas.height * imgWidth) / canvas.width;
+        var contentHeight = pageHeight - margin * 2;
+        var pages = Math.max(1, Math.ceil(imgHeight / contentHeight));
+
+        for (var p = 0; p < pages; p++){
+          if (p > 0) pdf.addPage();
+          var y = margin - p * contentHeight;
+          pdf.addImage(imgData, 'PNG', margin, y, imgWidth, imgHeight);
+        }
+
+        pdf.save(getBaseFilename() + '-summary.pdf');
+        resolve();
+      }).catch(function(err){
+        if (container.parentNode) document.body.removeChild(container);
+        reject(err);
+      });
+    });
+  }
+
+  downloadPdfBtn.addEventListener('click', function(){
+    if (!state.summary) return;
+    var span = downloadPdfBtn.querySelector('span');
+    var original = span.textContent;
+    downloadPdfBtn.disabled = true;
+    span.textContent = t('generatingPdf');
+
+    exportSummaryAsPdf().catch(function(err){
+      console.error(err);
+      showError(t('errPdfExport'));
+    }).finally(function(){
+      downloadPdfBtn.disabled = false;
+      span.textContent = original;
+    });
   });
 
   shareBtn.addEventListener('click', function(){
@@ -900,9 +1142,12 @@
 
   resetBtn.addEventListener('click', function(){
     state.file = null;
+    state.imageFile = null;
     state.summary = '';
     fileInput.value = '';
+    imageInput.value = '';
     fileChip.classList.remove('show');
+    imageFileChip.classList.remove('show');
     summarizeBtn.disabled = true;
     resultsSection.classList.remove('show');
     hideError();
